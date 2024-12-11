@@ -19,6 +19,11 @@ on:
         type: string
         description: 'Path of the dags folder in the dags repository'
         default: dags
+      enable_full_clean:
+        description: 'Enable complete deletion of dir_name folder before deployment'
+        required: false
+        default: 'false'
+        type: boolean
 
     secrets:
       AWS_OIDC_ROLE:
@@ -40,6 +45,12 @@ jobs:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
           aws-region: 'us-east-1'
           cicd-deployment-role: ${{ secrets.CICD_DEPLOYMENT_ROLE }}
+
+      - name: Clean bucket folder dags/${{ inputs.dir_name }} (runs only if enable_full_clean is true)
+        if: ${{ inputs.enable_full_clean == 'true' }}
+        run: |
+          echo "Removing content from s3://${{ inputs.bucket-name }}/dags/${{ inputs.dir_name }} folder"
+          aws s3 rm s3://${{ inputs.bucket-name }}/dags/${{ inputs.dir_name }} --recursive
 
       - name: Copy DAGs
         id: copy-dags
