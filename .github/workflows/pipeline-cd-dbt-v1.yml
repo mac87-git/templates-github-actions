@@ -119,30 +119,37 @@ jobs:
             fi                
           done
 
-      - name: Get AWS credentials with OIDC
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS credentials and assume roles
+        uses: ./.github/actions/aws-credentials-action-v1
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
           aws-region: 'us-east-1'
+          cicd-deployment-role: ${{ secrets.CICD_DEPLOYMENT_ROLE }}
 
-      - name: Assuming another role
-        id: get-creds
-        run: |
-          export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s" \
-            $(aws sts assume-role \
-            --role-arn ${{ secrets.CICD_DEPLOYMENT_ROLE }} \
-            --role-session-name gh-actions-call \
-            --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
-            --output text))
-          # Mask out the credentials
-          echo "::add-mask::$AWS_ACCESS_KEY_ID"
-          echo "::add-mask::$AWS_SECRET_ACCESS_KEY"
-          echo "::add-mask::$AWS_SESSION_TOKEN"
+      # - name: Get AWS credentials with OIDC
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+      #     aws-region: 'us-east-1'
 
-          # Set them as env vars
-          echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> $GITHUB_ENV
-          echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> $GITHUB_ENV
-          echo "AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN" >> $GITHUB_ENV
+      # - name: Assuming another role
+      #   id: get-creds
+      #   run: |
+      #     export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s" \
+      #       $(aws sts assume-role \
+      #       --role-arn ${{ secrets.CICD_DEPLOYMENT_ROLE }} \
+      #       --role-session-name gh-actions-call \
+      #       --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
+      #       --output text))
+      #     # Mask out the credentials
+      #     echo "::add-mask::$AWS_ACCESS_KEY_ID"
+      #     echo "::add-mask::$AWS_SECRET_ACCESS_KEY"
+      #     echo "::add-mask::$AWS_SESSION_TOKEN"
+
+      #     # Set them as env vars
+      #     echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> $GITHUB_ENV
+      #     echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> $GITHUB_ENV
+      #     echo "AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN" >> $GITHUB_ENV
 
       - name: Copy DBT projects
         id: copy-dbt-projects

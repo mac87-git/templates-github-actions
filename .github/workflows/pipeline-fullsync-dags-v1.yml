@@ -35,36 +35,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials and assume roles
-        uses: ./.github/actions/aws-credentials-action
+        uses: ./.github/actions/aws-credentials-action-v1
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
           aws-region: 'us-east-1'
           cicd-deployment-role: ${{ secrets.CICD_DEPLOYMENT_ROLE }}
-
-      # - name: Get AWS credentials with OIDC
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
-      #     aws-region: 'us-east-1'
-
-      # - name: Assuming another role
-      #   id: get-creds
-      #   run: |
-      #     export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s" \
-      #       $(aws sts assume-role \
-      #       --role-arn ${{ secrets.CICD_DEPLOYMENT_ROLE }} \
-      #       --role-session-name gh-actions-call \
-      #       --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
-      #       --output text))
-      #     # Mask out the credentials
-      #     echo "::add-mask::$AWS_ACCESS_KEY_ID"
-      #     echo "::add-mask::$AWS_SECRET_ACCESS_KEY"
-      #     echo "::add-mask::$AWS_SESSION_TOKEN"
-
-      #     # Set them as env vars
-      #     echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> $GITHUB_ENV
-      #     echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> $GITHUB_ENV
-      #     echo "AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN" >> $GITHUB_ENV
       
       - name: Clean bucket folder dags/${{ inputs.dir_name }}
         env:
@@ -75,11 +50,8 @@ jobs:
       - name: Copy DAGs
         id: copy-dags
         run: |
-          echo "Syncing s3://${{ inputs.bucket-name }}/dags/${{ inputs.dir_name }}/ folder"
-          #aws s3 sync --delete ${{ inputs.dags_repository_folder }} s3://${{ inputs.bucket-name }}/dags/${{ inputs.dir_name }}/
-          echo dags_subdirs: ${{ inputs.dags_subdirs }}
           for subdir in ${{ inputs.dags_subdirs }}; do
+            echo "Syncing s3://${{ inputs.bucket-name }}/dags/${{ inputs.dir_name }}/$subdir folder"
             subdir_path="${{ inputs.dags_repository_folder }}/$subdir"
-            echo subdir_path: $subdir_path
             aws s3 sync --delete $subdir_path s3://${{ inputs.bucket-name }}/dags/${{ inputs.dir_name }}/$subdir  
           done
