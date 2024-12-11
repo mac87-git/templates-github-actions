@@ -54,38 +54,43 @@ jobs:
           cache: 'poetry'
 
       - run: poetry install ${{ env.POETRY_INSTALL_OPTIONS }}
+
+      - name: Use DBT Cache Action
+        uses: mac87-git/templates-github-actions/.github/actions/dbt-target-cache-v1@main
+        with:
+          dbt_projects_list: ${{ inputs.dbt_projects_list }}
       
       # BEGIN DBT CACHE
-      - name: Create manifest hash
-        id: create-manifest-hash
-        env:
-          MANIFEST_GLOB: ${{ env.DBT_CACHE_PATH }}/*/target/manifest.json
-        run: |
-          for project in ${{ inputs.dbt_projects_list }}; do
-            project_path="$DBT_REPOSITORY_FOLDER/$project"
-            echo " ** Processing: $project_path **"
-            if [[ -d $project_path && -f $project_path/profiles.yml && -f $project_path/dbt_project.yml ]]; then
-              echo " ** Creating manifest hash **"
-              export DBT_PROJECT_DIR=$project_path
-              export DBT_TARGET_PATH=$DBT_CACHE_PATH/$project/target
-              poetry run dbt deps
-              mkdir -p $DBT_CACHE_PATH/$project
-              cp -r $DBT_PROJECT_DIR/dbt_packages $DBT_CACHE_PATH/$project
-              poetry run dbt ls --profiles-dir $DBT_PROJECT_DIR --target dev
-            fi
-          done
+      # - name: Create manifest hash
+      #   id: create-manifest-hash
+      #   env:
+      #     MANIFEST_GLOB: ${{ env.DBT_CACHE_PATH }}/*/target/manifest.json
+      #   run: |
+      #     for project in ${{ inputs.dbt_projects_list }}; do
+      #       project_path="$DBT_REPOSITORY_FOLDER/$project"
+      #       echo " ** Processing: $project_path **"
+      #       if [[ -d $project_path && -f $project_path/profiles.yml && -f $project_path/dbt_project.yml ]]; then
+      #         echo " ** Creating manifest hash **"
+      #         export DBT_PROJECT_DIR=$project_path
+      #         export DBT_TARGET_PATH=$DBT_CACHE_PATH/$project/target
+      #         poetry run dbt deps
+      #         mkdir -p $DBT_CACHE_PATH/$project
+      #         cp -r $DBT_PROJECT_DIR/dbt_packages $DBT_CACHE_PATH/$project
+      #         poetry run dbt ls --profiles-dir $DBT_PROJECT_DIR --target dev
+      #       fi
+      #     done
 
-          manifest_hash="$(ls $MANIFEST_GLOB | sort | xargs cat | sha256sum | cut -d ' ' -f 1)"
-          echo manifest_hash="$manifest_hash" >> $GITHUB_OUTPUT
+      #     manifest_hash="$(ls $MANIFEST_GLOB | sort | xargs cat | sha256sum | cut -d ' ' -f 1)"
+      #     echo manifest_hash="$manifest_hash" >> $GITHUB_OUTPUT
       
-      - name: Cache dbt-target
-        uses: actions/cache@v4
-        with:
-          key: dbt-target-${{ steps.create-manifest-hash.outputs.manifest_hash }}
-          restore-keys: dbt-target-
-          path: |
-            ${{ env.DBT_TARGET_CACHE_GLOB }}/
-            !**/run
+      # - name: Cache dbt-target
+      #   uses: actions/cache@v4
+      #   with:
+      #     key: dbt-target-${{ steps.create-manifest-hash.outputs.manifest_hash }}
+      #     restore-keys: dbt-target-
+      #     path: |
+      #       ${{ env.DBT_TARGET_CACHE_GLOB }}/
+      #       !**/run
       # END DBT CACHE
 
       - name: Test full dbt projects

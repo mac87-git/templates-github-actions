@@ -101,9 +101,6 @@ jobs:
 
       - name: Compile dbt
         id: compile-dbt
-        # shell: bash
-        #env:
-        #  DBT_PROJECTS_LIST: ${{ inputs.dbt_projects_list }}
         run: |
           for project in ${{ inputs.dbt_projects_list }}; do
             project_path="$DBT_REPOSITORY_FOLDER/$project"
@@ -120,36 +117,11 @@ jobs:
           done
 
       - name: Configure AWS credentials and assume roles
-        uses: ./.github/actions/aws-credentials-action-v1
+        uses: mac87-git/templates-github-actions/.github/actions/aws-credentials-action-v1@main
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
           aws-region: 'us-east-1'
           cicd-deployment-role: ${{ secrets.CICD_DEPLOYMENT_ROLE }}
-
-      # - name: Get AWS credentials with OIDC
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
-      #     aws-region: 'us-east-1'
-
-      # - name: Assuming another role
-      #   id: get-creds
-      #   run: |
-      #     export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s" \
-      #       $(aws sts assume-role \
-      #       --role-arn ${{ secrets.CICD_DEPLOYMENT_ROLE }} \
-      #       --role-session-name gh-actions-call \
-      #       --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
-      #       --output text))
-      #     # Mask out the credentials
-      #     echo "::add-mask::$AWS_ACCESS_KEY_ID"
-      #     echo "::add-mask::$AWS_SECRET_ACCESS_KEY"
-      #     echo "::add-mask::$AWS_SESSION_TOKEN"
-
-      #     # Set them as env vars
-      #     echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> $GITHUB_ENV
-      #     echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> $GITHUB_ENV
-      #     echo "AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN" >> $GITHUB_ENV
 
       - name: Copy DBT projects
         id: copy-dbt-projects
