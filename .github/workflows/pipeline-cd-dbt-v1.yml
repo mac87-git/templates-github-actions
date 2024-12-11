@@ -1,0 +1,157 @@
+name: Deploy DBT projects
+on:
+  workflow_call:
+    inputs:
+      bucket-name:
+        required: true
+        type: string
+      dbt_dir_dest:
+        required: false
+        description: 'Name of the folder where the dbt projects will live'
+        type: string
+        default: "${{github.event.repository.name}}_dbt_projects"
+      dbt_repository_folder:
+        required: false
+        type: string
+        description: 'Path of the dbt projects folder in the repository'
+        default: dbt
+      dbt_projects_list:
+        description: whitespace separated list of projects to deploy
+        required: true
+        type: string
+      environment:
+        description: 'Select the environment to deploy'
+        required: true
+        type: string
+      python_version:
+        description: 'Python version to use for parsing dbt projects'
+        required: true
+        type: string
+      poetry_install_options:
+        description: 'Optional parameters to pass to the poetry install command'
+        required: false
+        type: string 
+
+    secrets:
+      AWS_OIDC_ROLE:
+        required: true
+      CICD_DEPLOYMENT_ROLE:
+        required: true
+  
+jobs:
+
+  deploy-dbt:
+    name: 'Deploy DBT projects to S3'
+    runs-on: ubuntu-latest
+    env:
+      # cache_path should be absolute:
+      DBT_CACHE_PATH: /tmp/dbt_cache
+      DBT_TARGET_CACHE_GLOB: /tmp/dbt_cache/*/target
+      DBT_REPOSITORY_FOLDER: ${{ inputs.dbt_repository_folder }}
+      PYTHON_VERSION: ${{ inputs.python_version }}
+      POETRY_INSTALL_OPTIONS: ${{ inputs.poetry_install_options }}
+      ENVIRONMENT: ${{ inputs.environment }}
+      DBT_ENV_SECRET_DBKS_DEV_TOKEN: mock
+      DBT_ENV_SECRET_DBKS_PRD_TOKEN: mock
+      DBT_ENV_SECRET_DBKS_BANKING_DEV_TOKEN: mock
+      DBT_ENV_SECRET_DBKS_BANKING_PRD_TOKEN: mock
+    steps:
+      - name: 'Checkout head: ${{ github.event.pull_request.head.ref }}'
+        uses: actions/checkout@v4
+
+      - run: pipx install poetry
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'poetry'
+      - run: poetry install ${{ env.POETRY_INSTALL_OPTIONS }}
+
+      # BEGIN DBT CACHE
+      - name: Create manifest hash
+        id: create-manifest-hash
+        env:
+          MANIFEST_GLOB: ${{ env.DBT_CACHE_PATH }}/*/target/manifest.json
+        run: |
+          for project in ${{ inputs.dbt_projects_list }}; do
+            project_path="$DBT_REPOSITORY_FOLDER/$project"
+            echo " ** Processing: $project_path **"
+            if [[ -d $project_path && -f $project_path/profiles.yml && -f $project_path/dbt_project.yml ]]; then
+              echo " ** Creating manifest hash **"
+              export DBT_PROJECT_DIR=$project_path
+              export DBT_TARGET_PATH=$DBT_CACHE_PATH/$project/target
+              poetry run dbt deps
+              mkdir -p $DBT_CACHE_PATH/$project
+              cp -r $DBT_PROJECT_DIR/dbt_packages $DBT_CACHE_PATH/$project
+              poetry run dbt ls --profiles-dir $DBT_PROJECT_DIR --target dev
+            fi
+          done
+
+          manifest_hash="$(ls $MANIFEST_GLOB | sort | xargs cat | sha256sum | cut -d ' ' -f 1)"
+          echo manifest_hash="$manifest_hash" >> $GITHUB_OUTPUT
+      
+      - name: Cache dbt-target
+        uses: actions/cache@v4
+        with:
+          key: dbt-target-${{ steps.create-manifest-hash.outputs.manifest_hash }}
+          restore-keys: dbt-target-
+          path: |
+            ${{ env.DBT_TARGET_CACHE_GLOB }}/
+            !**/run
+      # END DBT CACHE
+
+      - name: Compile dbt
+        id: compile-dbt
+        # shell: bash
+        #env:
+        #  DBT_PROJECTS_LIST: ${{ inputs.dbt_projects_list }}
+        run: |
+          for project in ${{ inputs.dbt_projects_list }}; do
+            project_path="$DBT_REPOSITORY_FOLDER/$project"
+            if [[ -d $project_path && -f $project_path/profiles.yml && -f $project_path/dbt_project.yml ]]; then
+              echo " ** Testing and Compiling dbt project: $project_path **"
+              export DBT_PROJECT_DIR=$project_path
+              export DBT_PROFILES_DIR=$DBT_PROJECT_DIR
+              # discard logs
+              export DBT_LOG_PATH=/tmp/${project}_logs
+
+              poetry run dbt deps
+              poetry run dbt parse --target $ENVIRONMENT || (echo "::error:: Project $project is incompatible with other dev changes" && exit 1)
+            fi                
+          done
+
+      - name: Get AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          aws-region: 'us-east-1'
+
+      - name: Assuming another role
+        id: get-creds
+        run: |
+          export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s" \
+            $(aws sts assume-role \
+            --role-arn ${{ secrets.CICD_DEPLOYMENT_ROLE }} \
+            --role-session-name gh-actions-call \
+            --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
+            --output text))
+          # Mask out the credentials
+          echo "::add-mask::$AWS_ACCESS_KEY_ID"
+          echo "::add-mask::$AWS_SECRET_ACCESS_KEY"
+          echo "::add-mask::$AWS_SESSION_TOKEN"
+
+          # Set them as env vars
+          echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> $GITHUB_ENV
+          echo "AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN" >> $GITHUB_ENV
+
+      - name: Copy DBT projects
+        id: copy-dbt-projects
+        run: |
+          for project in ${{ inputs.dbt_projects_list }}; do
+            project_path="$DBT_REPOSITORY_FOLDER/$project"
+            if [[ -d $project_path && -f $project_path/profiles.yml && -f $project_path/dbt_project.yml ]]; then
+              echo "Syncing s3://${{ inputs.bucket-name }}/dags/${{ inputs.dbt_dir_dest }}/$project folder"
+              aws s3 sync --delete $project_path s3://${{ inputs.bucket-name }}/dags/${{ inputs.dbt_dir_dest }}/$project
+            fi                
+          done
+          
