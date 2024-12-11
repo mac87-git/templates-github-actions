@@ -10,10 +10,6 @@ inputs:
   cicd-deployment-role:
     description: 'The CICD role to assume'
     required: true
-outputs:
-  random-number:
-    description: "Random number"
-    value: ${{ steps.random-number-generator.outputs.random-number }}
 runs:
   using: 'composite'
   steps:
@@ -22,13 +18,23 @@ runs:
       with:
         role-to-assume: ${{ inputs.role-to-assume }}
         aws-region: ${{ inputs.aws-region }}
-    - name: Give execute permissions to aws-credentials.sh
-      run: chmod +x mac87-git/templates-github-actions/.github/actions/aws-credentials-action-v1/aws-credentials.sh@main
-      shell: bash
-    - name: Run AWS credentials script
-      run: mac87-git/templates-github-actions/.github/actions/aws-credentials-action-v1/aws-credentials.sh@main
-      shell: bash
-      env:
-        INPUT_ROLE_TO_ASSUME: ${{ inputs.role-to-assume }}
-        INPUT_AWS_REGION: ${{ inputs.aws-region }}
-        INPUT_CICD_DEPLOYMENT_ROLE: ${{ inputs.cicd-deployment-role }}
+
+    - name: Assuming another role
+      id: get-creds
+      run: |
+        echo "Assuming the deployment role..."
+        export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s" \
+          $(aws sts assume-role \
+          --role-arn ${{ inputs.cicd-deployment-role }} \
+          --role-session-name gh-actions-call \
+          --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
+          --output text))
+        # Mask out the credentials
+        echo "::add-mask::$AWS_ACCESS_KEY_ID"
+        echo "::add-mask::$AWS_SECRET_ACCESS_KEY"
+        echo "::add-mask::$AWS_SESSION_TOKEN"
+
+        # Set them as env vars
+        echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> $GITHUB_ENV
+        echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> $GITHUB_ENV
+        echo "AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN" >> $GITHUB_ENV
