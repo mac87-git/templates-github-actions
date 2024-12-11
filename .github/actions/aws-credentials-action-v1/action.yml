@@ -21,6 +21,7 @@ runs:
 
     - name: Assuming another role
       id: get-creds
+      shell: bash
       run: |
         echo "Assuming the deployment role..."
         export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s" \
