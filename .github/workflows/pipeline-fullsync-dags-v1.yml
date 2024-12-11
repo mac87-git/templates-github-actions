@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials and assume roles
-        uses: ./.github/actions/aws-credentials-action-v1
+        uses: mac87-git/templates-github-actions/.github/actions/aws-credentials-action-v1@main
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
           aws-region: 'us-east-1'
