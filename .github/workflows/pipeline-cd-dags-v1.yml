@@ -47,7 +47,7 @@ jobs:
           cicd-deployment-role: ${{ secrets.CICD_DEPLOYMENT_ROLE }}
 
       - name: Clean bucket folder dags/${{ inputs.dir_name }} (runs only if enable_full_clean is true)
-        if: ${{ inputs.enable_full_clean == 'true' }}
+        if: ${{ inputs.enable_full_clean == true }}
         run: |
           echo "Removing content from s3://${{ inputs.bucket-name }}/dags/${{ inputs.dir_name }} folder"
           aws s3 rm s3://${{ inputs.bucket-name }}/dags/${{ inputs.dir_name }} --recursive
