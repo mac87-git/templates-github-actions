@@ -1,0 +1,114 @@
+name: Get changed files
+
+on:
+  workflow_call:
+    inputs:
+      base_rev:
+        description: branch or commit used as base for compare
+        required: true
+        type: string
+      head_rev:
+        description: branch or commit used as head for compare
+        required: true
+        type: string
+      check_path:
+        description: path to check
+        required: false
+        default: "catalog_metadata"
+        type: string
+      subdirs:
+        description: whitespace separated subdirs to check
+        required: false
+        default: ""
+        type: string
+    outputs:
+      changed:
+        description: whitespace separated files changed
+        value: ${{ jobs.changed-files.outputs.changed }}
+      deleted:
+        description: whitespace separated files deleted
+        value: ${{ jobs.changed-files.outputs.deleted }}
+
+jobs:
+  changed-files:
+    name: Get ${{ inputs.check_path }} changed files
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.changed-files.outputs.changed }}
+      deleted: ${{ steps.changed-files.outputs.deleted }}
+    env:
+      BASE_REV: ${{ inputs.base_rev }}
+    steps:
+      - name: Setup check paths
+        id: setup-check-paths
+        env:
+          SUBDIRS: ${{ inputs.subdirs }}
+        run: |
+          if [ -z "${SUBDIRS}" ]; then
+            check_paths=${{ inputs.check_path }}
+          else
+            check_paths=""
+            for subdir in "$SUBDIRS"; do
+              check_paths+="${{ inputs.check_path }}/$subdir "
+            done
+          fi
+          echo CHECK_PATHS=$check_paths >> $GITHUB_ENV
+
+      - name: 'Checkout head: ${{ inputs.head_rev }}'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.head_rev }}
+
+      - run: |
+          git config --global user.email "cicd@example.com"
+          git config --global user.name "CI-CD"
+          git merge --squash --no-commit --strategy-option=ours origin/$BASE_REV
+      - name: Show info
+        run: |
+          echo Getting differences between:
+          echo - head: $(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse HEAD)
+          echo - base: $(git rev-parse --abbrev-ref origin/$BASE_REV) @ $(git rev-parse origin/$BASE_REV)
+          echo for files: $CHECK_PATHS
+          git status
+          echo changed
+          git diff --ignore-space-at-eol --no-renames --diff-filter=d --name-only origin/$BASE_REV
+          echo deleted
+          git diff --ignore-space-at-eol --no-renames --diff-filter=D --name-only origin/$BASE_REV
+      - name: Get changed files
+        id: changed-files
+        run: |
+          _get_changes() {
+            diff_filter=$1
+            base=$2
+            shift 2
+            changes=$(git diff --ignore-space-at-eol --no-renames --diff-filter=$diff_filter --name-only $base -- $@ | tr '\n' ' ')
+            # remove the terminating empty space
+            changes=${changes%?}
+            echo $changes
+          }
+          changed=$(_get_changes d origin/$BASE_REV "$CHECK_PATHS")
+          deleted=$(_get_changes D origin/$BASE_REV "$CHECK_PATHS")
+          # get deleted files from previous commits in the same branch
+          commits_ahead=$(git rev-list --count "$(git rev-parse origin/$BASE_REV)..$(git rev-parse HEAD)")
+          # max 25 commits or untilorigin/ BASE_REV
+          commits_ahead=$((commits_ahead > 25 ? 25 : commits_ahead))
+          echo Checking for delted files in the last $commits_ahead commits
+          # get deleted files in each commit
+          for ((i=1; i<$commits_ahead; i++)); do
+            deleted_files=$(_get_changes D HEAD~$i "$CHECK_PATHS")
+            for file in $deleted_files; do
+              # do not add files:
+              # - twice
+              # - if they are in "changed"
+              if [[ $deleted != *"$file"* && $changed != *"$file"* ]]; then
+                deleted+=" $file"
+              fi
+            done
+          done
+          # Set job outputs
+          echo changed=$changed >> $GITHUB_OUTPUT
+          echo deleted=$deleted >> $GITHUB_OUTPUT
+      - run: |
+          echo changed=${{ steps.changed-files.outputs.changed }}
+          echo deleted=${{ steps.changed-files.outputs.deleted }}
