@@ -1,0 +1,61 @@
+ ** Processing: dbt/core **
+ ** Creating manifest hash **
+10:50:58  Running with dbt=1.8.7
+10:50:58  Warning: No packages were found in packages.yml
+10:50:58  Warning: No packages were found in packages.yml
+10:51:00  Running with dbt=1.8.7
+using legacy validation callback
+10:51:02  Registered adapter: databricks=1.8.7
+10:51:02  Unable to do partial parsing because saved manifest not found. Starting full parse.
+10:51:04  Found 2 models, 4 data tests, 596 macros
+growth_data_pipelines.example.my_first_dbt_model
+growth_data_pipelines.example.my_second_dbt_model
+growth_data_pipelines.example.not_null_my_first_dbt_model_id
+growth_data_pipelines.example.not_null_my_second_dbt_model_id
+growth_data_pipelines.example.unique_my_first_dbt_model_id
+growth_data_pipelines.example.unique_my_second_dbt_model_id
+ ** Processing: dbt/mac **
+ ** Creating manifest hash **
+10:51:06  Running with dbt=1.8.7
+10:51:06  Warning: No packages were found in packages.yml
+10:51:06  Warning: No packages were found in packages.yml
+10:51:08  Running with dbt=1.8.7
+using legacy validation callback
+10:51:09  Registered adapter: databricks=1.8.7
+10:51:09  Unable to do partial parsing because saved manifest not found. Starting full parse.
+10:51:11  Found 1 model, 2 data tests, 596 macros
+growth_data_pipelines.example.my_first_dbt_model
+growth_data_pipelines.example.not_null_my_first_dbt_model_id
+growth_data_pipelines.example.unique_my_first_dbt_model_id
+Run actions/cache@v4
+  with:
+    key: dbt-target-d3c61ed7f182942cfe60847f0eb6554fed66e5882552211da7d03232f9f837cc
+    restore-keys: dbt-target-
+    path: /tmp/dbt_cache/*/target/
+  !**/run
+  
+    enableCrossOsArchive: false
+    fail-on-cache-miss: false
+    lookup-only: false
+    save-always: false
+  env:
+    DBT_CACHE_PATH: /tmp/dbt_cache
+    DBT_TARGET_CACHE_GLOB: /tmp/dbt_cache/*/target
+    DBT_REPOSITORY_FOLDER: dbt
+    PYTHON_VERSION: 3.12
+    POETRY_INSTALL_OPTIONS: 
+    ENVIRONMENT: dev
+    DBT_ENV_SECRET_DBKS_DEV_TOKEN: mock
+    DBT_ENV_SECRET_DBKS_PRD_TOKEN: mock
+    DBT_ENV_SECRET_DBKS_BANKING_DEV_TOKEN: mock
+    DBT_ENV_SECRET_DBKS_BANKING_PRD_TOKEN: mock
+    pythonLocation: /opt/hostedtoolcache/Python/3.12.7/x64
+    PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.7/x64/lib/pkgconfig
+    Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.7/x64
+    Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.7/x64
+    Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.7/x64
+    LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.7/x64/lib
+Cache Size: ~0 MB (203427 B)
+/usr/bin/tar -xf /home/runner/work/_temp/fb51dc05-20d6-464a-be6c-50b8735adf2c/cache.tzst -P -C /home/runner/work/test_cicd_aws/test_cicd_aws --use-compress-program unzstd
+Cache restored successfully
+Cache restored from key: dbt-target-97c20ea3ebaeedcb6ad9bf291b1dff43b94b1a7375b2a0aada26ce1e4fc38ba1
