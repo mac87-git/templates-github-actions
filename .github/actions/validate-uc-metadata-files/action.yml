@@ -27,62 +27,20 @@ runs:
     - name: Prepare changed files with newlines
       id: prepared-changed-files
       run: |
-        echo "Original input: ${{ inputs.changed }}"
+        echo "🔍 Original input: ${{ inputs.changed }}"
         {
           echo 'files_changed<<EOF'
           echo "${{ inputs.changed }}" | tr ' ' '\n'
           echo 'EOF'
         } >> $GITHUB_OUTPUT
+        cp ${{ github.action_path }}/schema.yml ./uc-metadata-schema.yml
       shell: bash
 
     - name: Debug files changed output
       run: |
-        echo "Formatted files output:"
+        echo "🔍 Changed files separated by new line characters:"
         echo "${{ steps.prepared-changed-files.outputs.files_changed }}"
       shell: bash
-
-    - name: Debug schema location
-      run: |
-        echo "Current path: $PWD"
-        echo "Checking schema at: ${{ github.action_path }}/schema.yml"
-        ls -l ${{ github.action_path }}
-        cat ${{ github.action_path }}/schema.yml || echo "schema.yml not found or empty"
-        cp ${{ github.action_path }}/schema.yml ./schema.yml
-      shell: bash
-
-    - name: Validate file existence and content
-      shell: bash
-      run: |
-        echo "🔍 Validating files in input data..."
-        echo "Input:"
-        echo "${{ steps.prepared-changed-files.outputs.files_changed }}"
-        
-        error=0
-        while IFS= read -r file; do
-          if [ -z "$file" ]; then
-            continue
-          fi
-
-          echo "➡️ Checking: '$file'"
-          if [ ! -f "$file" ]; then
-            echo "❌ File not found: $file"
-            error=1
-            continue
-          fi
-
-          if [ ! -s "$file" ]; then
-            echo "⚠️ File is empty: $file"
-            error=1
-            continue
-          fi
-        done <<< "${{ steps.prepared-changed-files.outputs.files_changed }}"
-
-        if [ "$error" -ne 0 ]; then
-          echo "❗ One or more files are missing or empty."
-          exit 1
-        fi
-
-        echo "✅ All files exist and are not empty."
 
     - name: Debug list
       run: |
@@ -93,6 +51,5 @@ runs:
     - name: Validate schema
       uses: RomanosTrechlis/actions-validate-yaml@master
       with:
-        #schema: ${{ github.action_path }}/schema.yml
-        schema: ./schema.yml
+        schema: ./uc-metadata-schema.yml
         data: ${{ steps.prepared-changed-files.outputs.files_changed }}
