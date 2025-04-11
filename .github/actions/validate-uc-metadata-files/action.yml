@@ -47,6 +47,7 @@ runs:
         echo "Checking schema at: ${{ github.action_path }}/schema.yml"
         ls -l ${{ github.action_path }}
         cat ${{ github.action_path }}/schema.yml || echo "schema.yml not found or empty"
+        cp ${{ github.action_path }}/schema.yml ./schema.yml
       shell: bash
 
     - name: Validate file existence and content
@@ -83,9 +84,15 @@ runs:
 
         echo "✅ All files exist and are not empty."
 
+    - name: Debug list
+      run: |
+        echo "Current path: $PWD"
+        ls -l $PWD
+      shell: bash
 
     - name: Validate schema
       uses: RomanosTrechlis/actions-validate-yaml@master
       with:
-        schema: ${{ github.action_path }}/schema.yml
+        #schema: ${{ github.action_path }}/schema.yml
+        schema: ./schema.yml
         data: ${{ steps.prepared-changed-files.outputs.files_changed }}
