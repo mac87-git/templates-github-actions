@@ -8,21 +8,21 @@ inputs:
 runs:
   using: "composite"
   steps:
-    # - name: Create temporary yamllint config
-    #   run: |
-    #     cat <<-EOF > .yamllint
-    #     extends: default
+    - name: Create temporary yamllint config
+      run: |
+        cat <<-EOF > .yamllint
+        extends: default
 
-    #     rules:
-    #       document-start: disable
-    #     EOF
-    #   shell: bash
+        rules:
+          document-start: disable
+        EOF
+      shell: bash
 
-    # - name: Run yamllint
-    #   uses: karancode/yamllint-github-action@master
-    #   with:
-    #     yamllint_file_or_dir: ${{ inputs.changed }}
-    #     yamllint_strict: true
+    - name: Run yamllint
+      uses: karancode/yamllint-github-action@master
+      with:
+        yamllint_file_or_dir: ${{ inputs.changed }}
+        yamllint_strict: true
 
     - name: Prepare changed files with newlines
       id: prepared-changed-files
@@ -41,8 +41,8 @@ runs:
         echo "${{ steps.prepared-changed-files.outputs.files_changed }}"
       shell: bash
 
-    # - name: Validate schema
-    #   uses: RomanosTrechlis/actions-validate-yaml@master
-    #   with:
-    #     schema: ${{ github.action_path }}/schema.yml
-    #     data: ${{ steps.prepared-changed-files.outputs.files_changed }}
+    - name: Validate schema
+      uses: RomanosTrechlis/actions-validate-yaml@master
+      with:
+        schema: ${{ github.action_path }}/schema.yml
+        data: ${{ steps.prepared-changed-files.outputs.files_changed }}
