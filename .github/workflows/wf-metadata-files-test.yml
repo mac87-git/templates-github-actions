@@ -22,7 +22,6 @@ jobs:
   
   changed-files:
     name: Get changed files
-    needs: fail-if-pull-request-is-draft
     # uses: ./.github/workflows/wf-get-changed-metadata-files.yml 
     uses: mac87-git/templates-github-actions/.github/workflows/wf-get-changed-metadata-files.yml@main
     with:
