@@ -27,19 +27,12 @@ runs:
     - name: Prepare changed files with newlines
       id: prepared-changed-files
       run: |
-        echo "🔍 Original input: ${{ inputs.changed }}"
         {
           echo 'files_changed<<EOF'
           echo "${{ inputs.changed }}" | tr ' ' '\n'
           echo 'EOF'
         } >> $GITHUB_OUTPUT
         cp ${{ github.action_path }}/schema.yml ./uc-metadata-schema.yml
-      shell: bash
-
-    - name: Debug files changed output
-      run: |
-        echo "🔍 Changed files separated by new line characters:"
-        echo "${{ steps.prepared-changed-files.outputs.files_changed }}"
       shell: bash
 
     - name: Validate schema

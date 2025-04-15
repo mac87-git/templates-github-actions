@@ -32,8 +32,8 @@ jobs:
     needs: changed-metadata-files
     if: ${{ needs.changed-metadata-files.outputs.changed != '' }}
     steps:
-      # - uses: actions/checkout@v4 # ver si es necesario este paso
+      - uses: actions/checkout@v4
       - name: Validate metadata yml files
         uses: mac87-git/templates-github-actions/.github/actions/validate-uc-metadata-files@main
         with:
-          changed: ${{ needs.changed-metadata-files.outputs.changed }}  
+          changed: ${{ needs.changed-metadata-files.outputs.changed }}
