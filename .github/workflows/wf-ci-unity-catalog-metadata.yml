@@ -36,4 +36,4 @@ jobs:
       - name: Validate metadata yml files
         uses: mac87-git/templates-github-actions/.github/actions/validate-uc-metadata-files@main
         with:
-          changed: ${{ needs.changed-files.outputs.changed }}  
+          changed: ${{ needs.changed-metadata-files.outputs.changed }}  
