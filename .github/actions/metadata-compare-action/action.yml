@@ -36,6 +36,8 @@ runs:
         touch mac.txt
         pwd
         ls -la
+
+        ls -lRa "${{ github.action_path }}"
         
         nuevos=$(jq -c '.nuevos' output.json)
         borrados=$(jq -c '.borrados' output.json)
