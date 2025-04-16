@@ -12,13 +12,13 @@ def comparar(archivo1, archivo2, salida_json):
     data1 = leer_csv(archivo1)
     data2 = leer_csv(archivo2)
 
-    nuevos = [path for path in data1 if path not in data2]
-    borrados = [path for path in data2 if path not in data1]
-    cambiados = [path for path in data1 if path in data2 and data1[path] != data2[path]]
+    # nuevos = [path for path in data1 if path not in data2]
+    # borrados = [path for path in data2 if path not in data1]
+    # cambiados = [path for path in data1 if path in data2 and data1[path] != data2[path]]
 
-    print(nuevos)
-    print(borrados)
-    print(cambiados)
+    nuevos = " ".join([path for path in data1 if path not in data2])
+    borrados = " ".join([path for path in data2 if path not in data1])
+    cambiados = " ".join([path for path in data1 if path in data2 and data1[path] != data2[path]])
 
     with open(salida_json, 'w') as f:
         json.dump({
