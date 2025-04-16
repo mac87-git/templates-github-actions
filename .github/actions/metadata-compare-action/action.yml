@@ -28,11 +28,15 @@ runs:
     - name: Ejecutar comparación
       shell: bash
       run: |
-        python "${{ github.action_path }}/scripts/metadata_compare.py" "${{ inputs.archivo1 }}" "${{ inputs.archivo2 }}" output.json
+        python "${{ github.action_path }}/scripts/metadata_compare.py" "${{ inputs.archivo1 }}" "${{ inputs.archivo2 }}" output.json        
 
     - name: Leer outputs
       shell: bash
       run: |
+
+        pwd
+        ls -lRa
+        
         nuevos=$(jq -c '.nuevos' output.json)
         borrados=$(jq -c '.borrados' output.json)
         cambiados=$(jq -c '.cambiados' output.json)
