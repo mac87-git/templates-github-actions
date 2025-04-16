@@ -4,8 +4,8 @@ import json
 
 def leer_csv(path):
     with open(path, newline='') as csvfile:
-        reader = csv.DictReader(csvfile)
-        return {row['path']: row['md5'] for row in reader}
+        reader = csv.reader(csvfile)
+        return {row[0]: row[1] for row in reader}
 
 def comparar(archivo1, archivo2, salida_json):
     data1 = leer_csv(archivo1)
