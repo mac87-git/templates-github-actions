@@ -33,15 +33,15 @@ runs:
     - name: Leer outputs
       shell: bash
       run: |
-        touch mac.txt
-        pwd
-        ls -la
-
-        ls -lRa "${{ github.action_path }}"
+        cat output.json
         
         nuevos=$(jq -c '.nuevos' output.json)
         borrados=$(jq -c '.borrados' output.json)
         cambiados=$(jq -c '.cambiados' output.json)
+
+        echo $nuevos
+        echo $borrados
+        echo $borrados
 
         echo "nuevos=$nuevos" >> $GITHUB_OUTPUT
         echo "borrados=$borrados" >> $GITHUB_OUTPUT

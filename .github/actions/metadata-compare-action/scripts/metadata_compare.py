@@ -16,7 +16,6 @@ def comparar(archivo1, archivo2, salida_json):
     borrados = [path for path in data2 if path not in data1]
     cambiados = [path for path in data1 if path in data2 and data1[path] != data2[path]]
 
-    print(os.getcwd())
     print(nuevos)
     print(borrados)
     print(cambiados)
