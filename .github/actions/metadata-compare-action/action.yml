@@ -12,10 +12,13 @@ inputs:
 outputs:
   nuevos:
     description: Lista de archivos nuevos (JSON string)
+    value: ${{ steps.prepared-outputs.outputs.nuevos }}
   borrados:
     description: Lista de archivos borrados (JSON string)
+    value: ${{ steps.prepared-outputs.outputs.borrados }}
   cambiados:
     description: Lista de archivos cambiados (JSON string)
+    value: ${{ steps.prepared-outputs.outputs.cambiados }}        
 
 runs:
   using: "composite"
