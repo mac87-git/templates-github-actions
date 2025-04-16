@@ -1,6 +1,7 @@
 import sys
 import csv
 import json
+import os
 
 def leer_csv(path):
     with open(path, newline='') as csvfile:
@@ -14,6 +15,11 @@ def comparar(archivo1, archivo2, salida_json):
     nuevos = [path for path in data1 if path not in data2]
     borrados = [path for path in data2 if path not in data1]
     cambiados = [path for path in data1 if path in data2 and data1[path] != data2[path]]
+
+    print(os.getcwd())
+    print(nuevos)
+    print(borrados)
+    print(cambiados)
 
     with open(salida_json, 'w') as f:
         json.dump({
