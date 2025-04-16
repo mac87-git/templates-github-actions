@@ -37,9 +37,15 @@ runs:
         echo "cat output.json ---------------------------------- "
         cat output.json
         
-        nuevos=$(jq -c '.nuevos' output.json)
-        borrados=$(jq -c '.borrados' output.json)
-        cambiados=$(jq -c '.cambiados' output.json)
+        # nuevos=$(jq -c '.nuevos' output.json)
+        # borrados=$(jq -c '.borrados' output.json)
+        # cambiados=$(jq -c '.cambiados' output.json)
+
+        nuevos=$(jq -r '.nuevos' output.json)
+        borrados=$(jq -r '.borrados' output.json)
+        cambiados=$(jq -r '.cambiados' output.json)
+
+
         echo "nuevos ---------------------------------- "
         echo $nuevos
         echo "borrados ---------------------------------- "
