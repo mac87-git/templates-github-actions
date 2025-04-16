@@ -49,6 +49,7 @@ runs:
         echo "modified-files=$(echo "$modified_files" | tr -d '\n')" >> "$GITHUB_OUTPUT"
   
     - name: Use outputs
+      shell: bash
       run: |
         echo "Nuevos: ${{ steps.prepare-outputs.outputs.new-files }}"
         echo "Borrados: ${{ steps.prepare-outputs.outputs.deleted-files }}"
