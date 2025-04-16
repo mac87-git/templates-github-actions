@@ -54,3 +54,4 @@ runs:
         echo "Nuevos: ${{ steps.prepare-outputs.outputs.new-files }}"
         echo "Borrados: ${{ steps.prepare-outputs.outputs.deleted-files }}"
         echo "Cambiados: ${{ steps.prepare-outputs.outputs.modified-files }}"
+

@@ -38,7 +38,7 @@ def compare_csv(file_1, file_2, json_output):
         None
     """    
     data1 = read_csv(file_1)
-    data2 = read_csv(file_1)
+    data2 = read_csv(file_2)
 
     new_files = " ".join([path for path in data1 if path not in data2])
     deleted_files = " ".join([path for path in data2 if path not in data1])
