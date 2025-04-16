@@ -31,6 +31,7 @@ runs:
         python "${{ github.action_path }}/scripts/metadata_compare.py" "${{ inputs.archivo1 }}" "${{ inputs.archivo2 }}" output.json        
 
     - name: Leer outputs
+      id: prepared-outputs
       shell: bash
       run: |
 
@@ -53,6 +54,15 @@ runs:
         echo "cambiados ---------------------------------- "
         echo $cambiados
 
-        echo "nuevos=$nuevos" >> $GITHUB_OUTPUT
-        echo "borrados=$borrados" >> $GITHUB_OUTPUT
-        echo "cambiados=$cambiados" >> $GITHUB_OUTPUT
+        # Eliminar saltos de línea si los hay
+        echo "nuevos=$(echo "$nuevos" | tr -d '\n')" >> "$GITHUB_OUTPUT"
+        echo "borrados=$(echo "$borrados" | tr -d '\n')" >> "$GITHUB_OUTPUT"
+        echo "cambiados=$(echo "$cambiados" | tr -d '\n')" >> "$GITHUB_OUTPUT"        
+
+    - name: Validate outputs
+      shell: bash
+      run: |
+        echo "Test mac"
+        echo ${{ steps.prepared-outputs.outputs.nuevos }}
+        echo ${{ steps.prepared-outputs.outputs.borrados }}
+        echo ${{ steps.prepared-outputs.outputs.cambiados }}
