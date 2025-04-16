@@ -28,7 +28,7 @@ def comparar(archivo1, archivo2, salida_json):
             "cambiados": cambiados
         }, f)
 
-if __name__ == "_main_":
+if __name__ == "__main__":
     if len(sys.argv) != 4:
         print("Uso: compare_csv.py archivo1.csv archivo2.csv salida.json")
         sys.exit(1)
