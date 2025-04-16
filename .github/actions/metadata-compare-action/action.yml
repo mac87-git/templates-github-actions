@@ -1,0 +1,42 @@
+name: Comparar CSVs
+description: Compara dos archivos CSV con campos path y md5
+
+inputs:
+  archivo1:
+    description: Ruta al primer archivo CSV
+    required: true
+  archivo2:
+    description: Ruta al segundo archivo CSV
+    required: true
+
+outputs:
+  nuevos:
+    description: Lista de archivos nuevos (JSON string)
+  borrados:
+    description: Lista de archivos borrados (JSON string)
+  cambiados:
+    description: Lista de archivos cambiados (JSON string)
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Ejecutar comparación
+      shell: bash
+      run: |
+        python "${{ github.action_path }}/scripts/metadata_compare.py" "${{ inputs.archivo1 }}" "${{ inputs.archivo2 }}" output.json
+
+    - name: Leer outputs
+      shell: bash
+      run: |
+        nuevos=$(jq -c '.nuevos' output.json)
+        borrados=$(jq -c '.borrados' output.json)
+        cambiados=$(jq -c '.cambiados' output.json)
+
+        echo "nuevos=$nuevos" >> $GITHUB_OUTPUT
+        echo "borrados=$borrados" >> $GITHUB_OUTPUT
+        echo "cambiados=$cambiados" >> $GITHUB_OUTPUT
