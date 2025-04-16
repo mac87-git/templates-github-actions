@@ -1,0 +1,49 @@
+name: Compare list of metadata files
+description: |
+  Compares two CSV files containing records with file paths and an MD5 hash of their contents. One CSV file represents the current file list, and the other CSV file represents the previous version of the file list. The comparison result returns the list of new, modified, and deleted files.
+
+inputs:
+  file-1:
+    description: Path to the first CSV file
+    required: true
+  file-2:
+    description: Path to the second CSV file
+    required: true
+
+outputs:
+  new-files:
+    description: List of new files separated by whitespace
+    value: ${{ steps.prepare-outputs.outputs.new-files }}
+  deleted-files:
+    description: List of deleted files separated by whitespace
+    value: ${{ steps.prepare-outputs.outputs.deleted-files }}
+  modified-files:
+    description: List of modified files separated by whitespace
+    value: ${{ steps.prepare-outputs.outputs.modified-files }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Run comparison
+      id: run-comparison
+      shell: bash
+      run: |
+        python "${{ github.action_path }}/scripts/metadata_compare.py" "${{ inputs.file-1 }}" "${{ inputs.file-2 }}" output.json
+
+    - name: Prepare outputs
+      id: prepare-outputs
+      shell: bash
+      run: |
+
+        new_files=$(jq -r '.new_files' output.json)
+        deleted_files=$(jq -r '.deleted_files' output.json)
+        modified_files=$(jq -r '.modified_files' output.json)
+
+        echo "new-files=$(echo "$new_files" | tr -d '\n')" >> "$GITHUB_OUTPUT"
+        echo "deleted-files=$(echo "$deleted_files" | tr -d '\n')" >> "$GITHUB_OUTPUT"
+        echo "modified-files=$(echo "$modified_files" | tr -d '\n')" >> "$GITHUB_OUTPUT"

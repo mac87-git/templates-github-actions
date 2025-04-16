@@ -1,8 +1,8 @@
 name: Validate Unity Catalog Metadata Files
 description: Validates YAML metadata files using yamllint and schema validation
 inputs:
-  changed:
-    description: "Whitespace-separated list of changed files"
+  file-list:
+    description: "List of files to validate separated by blank spaces"
     required: true
 
 runs:
@@ -21,7 +21,7 @@ runs:
     - name: Run yamllint
       uses: karancode/yamllint-github-action@master
       with:
-        yamllint_file_or_dir: ${{ inputs.changed }}
+        yamllint_file_or_dir: ${{ inputs.file-list }}
         yamllint_strict: true
 
     - name: Prepare changed files with newlines
@@ -29,7 +29,7 @@ runs:
       run: |
         {
           echo 'files_changed<<EOF'
-          echo "${{ inputs.changed }}" | tr ' ' '\n'
+          echo "${{ inputs.file-list }}" | tr ' ' '\n'
           echo 'EOF'
         } >> $GITHUB_OUTPUT
         cp ${{ github.action_path }}/schema.yml ./uc-metadata-schema.yml

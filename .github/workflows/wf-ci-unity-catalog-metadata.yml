@@ -12,17 +12,15 @@ on:
         required: true
         type: string
 
-permissions: # ver si es necesario esto
-  # From
-  # https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services#adding-permissions-settings
-  id-token: write
-  contents: read
+permissions:
+  contents: read # This is required for actions/checkout
 
 jobs:
   
   changed-metadata-files:
     name: Get modified metadata files
     uses: mac87-git/templates-github-actions/.github/workflows/wf-get-changed-metadata-files.yml@main
+    #uses: ClipMX/data-github-actions-templates/.github/workflows/wf-get-changed-metadata-files.yml@main
     with:
       base_rev: ${{ inputs.base_rev }}
       head_rev: ${{ inputs.head_rev }}
@@ -35,5 +33,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate metadata yml files
         uses: mac87-git/templates-github-actions/.github/actions/validate-uc-metadata-files@main
+        # uses: ClipMX/data-github-actions-templates/.github/actions/validate-uc-metadata-files@main
         with:
-          changed: ${{ needs.changed-metadata-files.outputs.changed }}
+          file-list: ${{ needs.changed-metadata-files.outputs.changed }}
