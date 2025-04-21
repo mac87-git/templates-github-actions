@@ -27,7 +27,7 @@ runs:
       uses: karancode/yamllint-github-action@master
       with:
         yamllint_file_or_dir: ${{ inputs.file-list }}
-        yamllint_config_filepath: ${{ github.action_path }}/config.yml
+        yamllint_config_filepath: ./uc-metadata-config.yml # ${{ github.action_path }}/config.yml
         yamllint_strict: true
 
     - name: Prepare changed files with newlines
