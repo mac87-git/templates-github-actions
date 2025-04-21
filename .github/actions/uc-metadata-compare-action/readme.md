@@ -21,8 +21,8 @@ The action determines:
 
 | Name      | Description                    | Required |
 |-----------|--------------------------------|----------|
-| `file-1`  | Path to the first CSV file     | ✅ Yes    |
-| `file-2`  | Path to the second CSV file    | ✅ Yes    |
+| `file-1`  | Path to the first CSV file     | ✅ Yes   |
+| `file-2`  | Path to the second CSV file    | ✅ Yes   |
 
 > `file-1` typically represents the **current state**, and `file-2` the **previous version**.
 

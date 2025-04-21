@@ -1,0 +1,89 @@
+name: Deploy UC Metadata - Full Sync
+on:
+  workflow_call:
+
+    secrets:
+      AWS_OIDC_ROLE:
+        required: true
+      CICD_DEPLOYMENT_ROLE:
+        required: true
+
+env:
+  S3_BUCKET: s3://mi-bucket-local
+  S3_APP_DATA_FOLDER: app_data
+
+  CATALOG_METADATA_FOLDER: catalog_metadata # TODO: Se puede definir en el workflow llamador y validar desde acá?
+  WORKING_DIR: cicd_wd
+  DUPLICATES_FOLDER: duplicates
+  METADATA_CHECKSUM_FOLDER: metadata_checksum
+
+  URL_AWS: http://localhost:4566 # TODO: QUITAR
+
+jobs:
+  deploy-dags:
+    name: 'Deploy metadata files to S3'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set composed environment variable
+        run: |
+          echo "REPOSITORY_NAME_FOLDER=${{ github.event.repository.name }}" >> $GITHUB_ENV # TODO: Se puede definir en el workflow llamador y validar desde acá?
+
+          echo "CURRENT_METADATA_FOLDER=$CATALOG_METADATA_FOLDER" >> $GITHUB_ENV
+          echo "CURRENT_METADATA_CHECKSUMS_PATH=$WORKING_DIR/${{ github.event.repository.name }}.csv" >> $GITHUB_ENV
+          echo "DUPLICATES_PATH=$WORKING_DIR/$DUPLICATES_FOLDER" >> $GITHUB_ENV
+          echo "METADATA_CHECKSUM_REPOS_PATH=$WORKING_DIR/$METADATA_CHECKSUM_FOLDER" >> $GITHUB_ENV
+          
+
+          echo "S3_APP_DATA_PATH=$S3_BUCKET/$S3_APP_DATA_FOLDER" >> $GITHUB_ENV
+          echo "S3_METADATA_CHECKSUM_REPOS_PATH=$S3_BUCKET/$S3_APP_DATA_FOLDER/$METADATA_CHECKSUM_FOLDER/" >> $GITHUB_ENV        
+          echo "S3_CURRENT_METADATA_PATH=$S3_BUCKET/$CATALOG_METADATA_FOLDER/${{ github.event.repository.name }}/" >> $GITHUB_ENV
+
+      - name: 'Checkout repository'
+        uses: actions/checkout@v4
+          
+      - name: Generate hash of current metadata
+        id: generate-md5
+        shell: bash
+        run: |
+          mkdir -p "$WORKING_DIR"
+
+          find $CURRENT_METADATA_FOLDER -type f -name "*.yml" | sort | while read file; do
+            hash=$(md5sum "$file" | awk '{print $1}')
+            relative_path="${file#$CURRENT_METADATA_FOLDER/}"
+            echo "$relative_path,$hash"
+          done > $CURRENT_METADATA_CHECKSUMS_PATH
+
+          echo "✅ Done. Generate MD5 checksums for current metadata files in $CURRENT_METADATA_FOLDER"
+          # cat "$CURRENT_METADATA_CHECKSUMS_PATH" # TODO: QUITAR
+
+      - name: Install AWS CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y awscli
+
+      - name: Set credentials # TODO: CHANGE
+        run: |
+          echo "AWS_ACCESS_KEY_ID=test" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=test" >> $GITHUB_ENV
+          echo "AWS_DEFAULT_REGION=us-east-1" >> $GITHUB_ENV
+
+      - name: Download checksum files from S3 # TODO: CHANGE
+        run: |
+          # aws s3 cp s3://mi-bucket/checksums.csv checksums_remote.csv
+          echo "aws --endpoint-url=$URL_AWS s3 cp $S3_METADATA_CHECKSUM_REPOS_PATH "$METADATA_CHECKSUM_REPOS_PATH" --recursive"
+          aws --endpoint-url=$URL_AWS s3 cp $S3_METADATA_CHECKSUM_REPOS_PATH "$METADATA_CHECKSUM_REPOS_PATH" --recursive
+
+      - name: Detect duplicate paths
+        uses: ./.github/actions/uc-metadata-detect-duplicate-action
+        with:
+          current_metadata: ${{ env.CURRENT_METADATA_CHECKSUMS_PATH }}
+          extra_repos_metadata: ${{ env.METADATA_CHECKSUM_REPOS_PATH }}
+          output_duplicates_dir: ${{ env.DUPLICATES_PATH }}
+
+      - name: Deploy metadata to S3 bucket
+        run: |
+          echo "aws --endpoint-url=$URL_AWS s3 sync --no-progress --delete $CURRENT_METADATA_FOLDER $S3_CURRENT_METADATA_PATH"
+          # aws --endpoint-url=$URL_AWS s3 sync --delete $CURRENT_METADATA_FOLDER $S3_CURRENT_METADATA_PATH
+          echo "aws --endpoint-url=$URL_AWS s3 cp $CURRENT_METADATA_CHECKSUMS_PATH $S3_METADATA_CHECKSUM_REPOS_PATH"
+          # aws --endpoint-url=$URL_AWS s3 cp --no-progress $CURRENT_METADATA_CHECKSUMS_PATH $S3_METADATA_CHECKSUM_REPOS_PATH

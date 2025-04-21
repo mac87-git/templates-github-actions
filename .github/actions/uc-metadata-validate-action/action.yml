@@ -8,20 +8,26 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Create temporary yamllint config
-      run: |
-        cat <<-EOF > .yamllint
-        extends: default
 
-        rules:
-          document-start: disable
-        EOF
+    - name: Debug
+      id: debug
+      run: |
+        echo "mac debug: ${{ github.action_path }}"
+        ls -Rla ${{ github.action_path }}
+
+        cp ${{ github.action_path }}/config.yml ./uc-metadata-config.yml
+        cp ${{ github.action_path }}/schema.yml ./uc-metadata-schema.yml # TODO: Depende de TODO de mas abajo
+        echo "mac pwd"
+        pwd
+        echo "mac debug 2:"
+        ls -la 
       shell: bash
 
     - name: Run yamllint
       uses: karancode/yamllint-github-action@master
       with:
         yamllint_file_or_dir: ${{ inputs.file-list }}
+        # yamllint_config_filepath: /home/mariano-carabajal/mutt-projects/clip/github-repositories/data_engineering_pipelines/uc-metadata-config.yml # ${{ github.action_path }}/config.yml
         yamllint_strict: true
 
     - name: Prepare changed files with newlines
@@ -29,14 +35,26 @@ runs:
       run: |
         {
           echo 'files_changed<<EOF'
-          echo "${{ inputs.file-list }}" | tr ' ' '\n'
+          # Trim leading and trailing spaces, then replace spaces with line breaks
+          echo "${{ inputs.file-list }}" | xargs | tr ' ' '\n'
           echo 'EOF'
         } >> $GITHUB_OUTPUT
-        cp ${{ github.action_path }}/schema.yml ./uc-metadata-schema.yml
+        
+      shell: bash
+
+    - name: Debug changed files output # TODO: BORRAR
+      run: |
+        echo "Changed files (with newlines):"
+        echo "${{ steps.prepared-changed-files.outputs.files_changed }}"
+
+        echo "--- As individual lines ---"
+        while read -r line; do
+          echo "> $line"
+        done <<< "${{ steps.prepared-changed-files.outputs.files_changed }}"
       shell: bash
 
     - name: Validate schema
       uses: RomanosTrechlis/actions-validate-yaml@master
       with:
-        schema: ./uc-metadata-schema.yml
+        schema: ${{ github.action_path }}/schema.yml # ./uc-metadata-schema.yml # TODO: Revisar si esto funciona remoto
         data: ${{ steps.prepared-changed-files.outputs.files_changed }}

@@ -1,0 +1,175 @@
+name: Deploy Unity Catalog Metadata Files - Incremental
+on:
+  workflow_call:
+
+    secrets:
+      AWS_OIDC_ROLE:
+        required: true
+      CICD_DEPLOYMENT_ROLE:
+        required: true
+
+env:
+  S3_BUCKET: s3://mi-bucket-local
+  S3_APP_DATA_FOLDER: app_data
+
+  CATALOG_METADATA_FOLDER: catalog_metadata
+  WORKING_DIR: cicd_wd
+  DUPLICATES_FOLDER: duplicates
+  METADATA_CHECKSUM_FOLDER: metadata_checksum
+  FILES_CHANGED_FOLDER: files_changed
+
+  URL_AWS: http://localhost:4566 # TODO: QUITAR
+
+jobs:
+  deploy-dags:
+    name: 'Deploy metadata files to S3'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set composed environment variable
+        run: |
+          echo "REPOSITORY_NAME_FOLDER=${{ github.event.repository.name }}" >> $GITHUB_ENV
+
+          echo "CURRENT_METADATA_FOLDER=$CATALOG_METADATA_FOLDER" >> $GITHUB_ENV
+          echo "CURRENT_METADATA_CHECKSUMS_PATH=$WORKING_DIR/${{ github.event.repository.name }}.csv" >> $GITHUB_ENV
+          echo "DUPLICATES_PATH=$WORKING_DIR/$DUPLICATES_FOLDER" >> $GITHUB_ENV
+          echo "METADATA_CHECKSUM_REPOS_PATH=$WORKING_DIR/$METADATA_CHECKSUM_FOLDER" >> $GITHUB_ENV
+          echo "PREVIOUS_METADATA_CHECKSUMS_PATH=$WORKING_DIR/$METADATA_CHECKSUM_FOLDER/${{ github.event.repository.name }}.csv" >> $GITHUB_ENV
+
+          echo "S3_APP_DATA_PATH=$S3_BUCKET/$S3_APP_DATA_FOLDER" >> $GITHUB_ENV
+          echo "S3_METADATA_CHECKSUM_REPOS_PATH=$S3_BUCKET/$S3_APP_DATA_FOLDER/$METADATA_CHECKSUM_FOLDER/" >> $GITHUB_ENV        
+          echo "S3_CURRENT_METADATA_PATH=$S3_BUCKET/$CATALOG_METADATA_FOLDER/${{ github.event.repository.name }}/" >> $GITHUB_ENV
+          echo "S3_FILES_CHANGED_PATH=$S3_BUCKET/$FILES_CHANGED_FOLDER/" >> $GITHUB_ENV
+
+      - name: 'Checkout repository'
+        uses: actions/checkout@v4
+          
+      - name: Generate hash of current metadata
+        id: generate-md5
+        shell: bash
+        run: |
+          mkdir -p "$WORKING_DIR"
+
+          find $CURRENT_METADATA_FOLDER -type f -name "*.yml" | sort | while read file; do
+            hash=$(md5sum "$file" | awk '{print $1}')
+            relative_path="${file#$CURRENT_METADATA_FOLDER/}"
+            echo "$relative_path,$hash"
+          done > $CURRENT_METADATA_CHECKSUMS_PATH
+
+          echo "✅ Done. Generate MD5 checksums for current metadata files in $CURRENT_METADATA_FOLDER"
+          cat "$CURRENT_METADATA_CHECKSUMS_PATH" # TODO: QUITAR
+
+      - name: Install AWS CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y awscli
+
+      - name: Set credentials # TODO: CHANGE
+        run: |
+          echo "AWS_ACCESS_KEY_ID=test" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=test" >> $GITHUB_ENV
+          echo "AWS_DEFAULT_REGION=us-east-1" >> $GITHUB_ENV
+
+      - name: Download checksum files from S3 # TODO: CHANGE
+        run: |
+          # aws s3 cp s3://mi-bucket/checksums.csv checksums_remote.csv
+          echo "aws --endpoint-url=$URL_AWS s3 cp $S3_METADATA_CHECKSUM_REPOS_PATH "$METADATA_CHECKSUM_REPOS_PATH" --recursive"
+          aws --endpoint-url=$URL_AWS s3 cp $S3_METADATA_CHECKSUM_REPOS_PATH "$METADATA_CHECKSUM_REPOS_PATH" --recursive
+
+      - name: Detect duplicate paths
+        uses: ./.github/actions/uc-metadata-detect-duplicate-action
+        with:
+          current_metadata: ${{ env.CURRENT_METADATA_CHECKSUMS_PATH }}
+          extra_repos_metadata: ${{ env.METADATA_CHECKSUM_REPOS_PATH }}
+          output_duplicates_dir: ${{ env.DUPLICATES_PATH }}
+
+      - name: Compare current and previous metadata
+        id: compare-metadata
+        uses: ./.github/actions/uc-metadata-compare-action
+        # uses: ClipMX/data-github-actions-templates/.github/actions/uc-metadata-compare-action@main
+        with:
+          file-1: "$CURRENT_METADATA_CHECKSUMS_PATH"
+          file-2: "$PREVIOUS_METADATA_CHECKSUMS_PATH"
+
+      - name: Set environment variable with lists of new, modified and deleted files
+        run: |
+          NEW_FILES="${{ steps.compare-metadata.outputs.new-files }}"
+          MODIFIED_FILES="${{ steps.compare-metadata.outputs.modified-files }}"
+          DELETED_FILES="${{ steps.compare-metadata-metadata.outputs.deleted-files }}"
+
+          echo "New Files: $NEW_FILES"
+          echo "Modified Files: $MODIFIED_FILES"
+          echo "Deleted Files: $DELETED_FILES"
+
+          if [[ -n "$NEW_FILES" ]]; then
+            ALL_CHANGED="$NEW_FILES $MODIFIED_FILES"
+          else
+            ALL_CHANGED="$MODIFIED_FILES"
+          fi
+
+          echo "ALL_CHANGED=$ALL_CHANGED" >> $GITHUB_ENV
+          echo "DELETED_FILES=$DELETED_FILES" >> $GITHUB_ENV
+
+          ALL_CHANGED_LOCAL_PATH=""
+          for file in $ALL_CHANGED; do
+            ALL_CHANGED_LOCAL_PATH="$CATALOG_METADATA_FOLDER/$file $ALL_CHANGED_LOCAL_PATH"
+          done
+
+          echo "With parent: $ALL_CHANGED_LOCAL_PATH"
+
+          echo "ALL_CHANGED_LOCAL_PATH=$ALL_CHANGED_LOCAL_PATH" >> $GITHUB_ENV
+
+      - name: Validate metadata yml files
+        if: env.ALL_CHANGED_LOCAL_PATH != ''
+        uses: ./.github/actions/uc-metadata-validate-action
+        # uses: ClipMX/data-github-actions-templates/.github/actions/uc-metadata-validate-action@main
+        with:
+          file-list: ${{ env.ALL_CHANGED_LOCAL_PATH }}
+
+      - name: Deploy metadata to S3 bucket
+        if: env.ALL_CHANGED != ''
+        run: |
+          # Generate file with metadata to process
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          CHANGED_FILES_FILE="$WORKING_DIR/${REPOSITORY_NAME_FOLDER}_${TIMESTAMP}.txt"
+
+          echo "${ALL_CHANGED}" | tr ' ' '\n' | sed "s|^|${REPOSITORY_NAME_FOLDER}/|" > "$CHANGED_FILES_FILE"
+          echo "✅ Generated file with metadata to process: $CHANGED_FILES_FILE"
+
+          echo "Contenido de $CHANGED_FILES_FILE:"
+          cat $CHANGED_FILES_FILE
+
+          echo "aws --endpoint-url=$URL_AWS s3 cp $CURRENT_METADATA_CHECKSUMS_PATH $S3_METADATA_CHECKSUM_REPOS_PATH"
+          # aws --endpoint-url=$URL_AWS s3 cp $CURRENT_METADATA_CHECKSUMS_PATH $S3_METADATA_CHECKSUM_REPOS_PATH
+
+          echo "aws --endpoint-url=$URL_AWS s3 cp $CHANGED_FILES_FILE $S3_FILES_CHANGED_PATH"
+          # aws --endpoint-url=$URL_AWS s3 cp $CHANGED_FILES_FILE $S3_FILES_CHANGED_PATH
+
+          mkdir tmp_copy
+          cd $CATALOG_METADATA_FOLDER
+          cp --parents -r $ALL_CHANGED ../tmp_copy
+          # tree tmp_copy
+          cd ..
+
+          cmd="aws --endpoint-url=$URL_AWS s3 cp --no-progress --recursive tmp_copy/ $S3_CURRENT_METADATA_PATH"
+          echo $cmd
+          # $cmd
+          # if [ $? -ne 0 ]; then
+          #   echo "::error:: aws command failed: $cmd"
+          #   echo "::error:: ERROR: $(tail -n 2 /dev/stderr)"
+          #   exit 1
+          # fi
+
+      - name: Delete deleted metadata into S3 bucket
+        if: env.DELETED_FILES != ''
+        run: |
+          for file in $DELETED_FILES; do
+            cmd="aws s3 rm $S3_CURRENT_METADATA_PATH/$file"
+            echo $cmd
+            # $cmd
+            # if [ $? -ne 0 ]; then
+            #   echo "::error:: aws command failed: $cmd"
+            #   echo "::error:: ERROR: $(tail -n 2 /dev/stderr)"
+            #   exit 1
+            # fi
+          done

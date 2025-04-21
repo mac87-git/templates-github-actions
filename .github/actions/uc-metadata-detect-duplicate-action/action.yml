@@ -1,0 +1,26 @@
+name: Detect Duplicate Paths
+description: Detects duplicated paths in CSV files comparing current metadata with historical ones.
+inputs:
+  current_metadata:
+    description: Path to the current metadata CSV
+    required: true
+  extra_repos_metadata:
+    description: Directory containing CSV files of metadata from the other repositories
+    required: true
+  output_duplicates_dir:
+    description: Path to write found duplicates
+    required: false
+    default: ./duplicates
+
+runs:
+  using: "composite"
+  steps:
+    - run: chmod +x "${{ github.action_path }}/detect_duplicates.sh"
+      shell: bash
+
+    - run: |
+        "${{ github.action_path }}/detect_duplicates.sh" \
+          "${{ inputs.current_metadata }}" \
+          "${{ inputs.extra_repos_metadata }}" \
+          "${{ inputs.output_duplicates_dir }}"
+      shell: bash
