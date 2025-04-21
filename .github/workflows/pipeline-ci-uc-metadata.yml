@@ -114,7 +114,8 @@ jobs:
   #   steps:
   #     - uses: actions/checkout@v4
       - name: Validate metadata yml files
-        uses: ./.github/actions/uc-metadata-validate-action
+        # uses: ./.github/actions/uc-metadata-validate-action
+        uses: mac87-git/templates-github-actions/.github/actions/uc-metadata-validate-action@main
         # uses: ClipMX/data-github-actions-templates/.github/actions/uc-metadata-validate-action@main
         with:
           file-list: ${{ steps.changed-files.outputs.changed }} # ${{ needs.changed-metadata-files.outputs.changed }}
