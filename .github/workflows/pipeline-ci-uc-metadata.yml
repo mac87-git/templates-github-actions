@@ -35,11 +35,11 @@ jobs:
       HEAD_REV: ${{ inputs.head_rev }}
       CHECK_PATHS: catalog_metadata
     steps:
-      - name: 'Checkout head: ${{ env.$HEAD_REV }}'
+      - name: 'Checkout head: ${{ env.HEAD_REV }}'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ env.$HEAD_REV }}
+          ref: ${{ env.HEAD_REV }}
   
       - name: Validate input references
         run: |
@@ -47,7 +47,7 @@ jobs:
           git rev-parse --verify origin/$BASE_REV || { echo "Invalid base_rev"; exit 1; }
           git rev-parse --verify $HEAD_REV || { echo "Invalid head_rev"; exit 1; }
 
-      - name: Merge $HEAD_REV with ${{ env.$HEAD_REV }}'
+      - name: Merge ${{ env.BASE_REV }} with ${{ env.HEAD_REV }}'
         run: |
           git config --global user.email "cicd@example.com"
           git config --global user.name "CI-CD"
