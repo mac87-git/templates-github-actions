@@ -56,5 +56,5 @@ runs:
     - name: Validate schema
       uses: RomanosTrechlis/actions-validate-yaml@master
       with:
-        schema: ${{ github.action_path }}/schema.yml # ./uc-metadata-schema.yml # TODO: Revisar si esto funciona remoto
+        schema: ./uc-metadata-schema.yml # TODO: ${{ github.action_path }}/schema.yml # 
         data: ${{ steps.prepared-changed-files.outputs.files_changed }}
